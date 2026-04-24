@@ -54,3 +54,21 @@ rules:
   # TODO lo demás → manual
   - when: manual
 
+rules:
+  # MASTER → auto + release
+  - if: '$CI_COMMIT_REF_NAME == "master" && $CI_PIPELINE_SOURCE == "push"'
+    variables:
+      REPOSITORY_KEY: "RELEASE"
+    when: on_success
+
+  # DEVELOP / SECURITY → auto
+  - if: '$CI_COMMIT_REF_NAME == "develop" && $CI_PIPELINE_SOURCE == "push"'
+    when: on_success
+
+  - if: '$CI_COMMIT_REF_NAME == "security" && $CI_PIPELINE_SOURCE == "push"'
+    when: on_success
+
+  # TODO LO DEMÁS → manual (forzado)
+  - when: manual
+
+
