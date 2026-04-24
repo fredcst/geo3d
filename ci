@@ -37,3 +37,20 @@ deployment:
       else
         echo "✅ Deployed to LAMP successfully"
       fi
+rules:
+  # MASTER → auto + release
+  - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+    variables:
+      REPOSITORY_KEY: "RELEASE"
+    when: on_success
+
+  # DEVELOP / SECURITY → auto
+  - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push"'
+    when: on_success
+
+  - if: '$CI_COMMIT_BRANCH == "security" && $CI_PIPELINE_SOURCE == "push"'
+    when: on_success
+
+  # TODO lo demás → manual
+  - when: manual
+
