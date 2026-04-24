@@ -1,0 +1,39 @@
+deployment:
+  stage: deployment
+
+  script:
+    # -------- BUILD TAR --------
+    - TAR_FILE="${APP_NAME}-${VERSION}.tar.gz"
+    - echo "Creating package $TAR_FILE"
+    - tar --exclude='.git' --exclude='.idea' --exclude="$TAR_FILE" -zcvf "$TAR_FILE" .
+
+    # -------- PUBLISH TO ARTIFACTORY --------
+    - |
+      BASE_URL="https://api.artifactory-dogen.group.echonet/artifactory/${ARTIFACTORY_REPOSITORY_PATH}-${REPOSITORY_KEY}/${TAR_FILE}"
+      echo "Publishing to $BASE_URL"
+
+      STATUS=$(curl -u "${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD}" \
+        -X PUT -s -o /dev/null -w "%{http_code}" \
+        "$BASE_URL" -T "$TAR_FILE" -k)
+
+      if [ "$STATUS" != "201" ]; then
+        echo "❌ Could not deploy artifact. Status: $STATUS"
+        exit 1
+      else
+        echo "✅ Deployed to Artifactory successfully"
+      fi
+
+    # -------- DEPLOY TO LAMP --------
+    - |
+      JSON_RESPONSE=$(curl -k -d "path=${ARTIFACTORY_REPOSITORY_PATH}-${REPOSITORY_KEY}/${TAR_FILE}" \
+        -X POST "https://lamp-dmz.group.echonet/api/v3/deploy-premium/${E_WEBHOSTING_APP_NAME}/${ENV}/${VERSION}/${HASH}")
+
+      STATUS=$(echo "$JSON_RESPONSE" | jq -r '.status')
+      CODE=$(echo "$JSON_RESPONSE" | jq -r '.code')
+
+      if [ "$CODE" != "200" ] || [ "$STATUS" != "success" ]; then
+        echo "❌ Deploy to LAMP failed: $JSON_RESPONSE"
+        exit 1
+      else
+        echo "✅ Deployed to LAMP successfully"
+      fi
