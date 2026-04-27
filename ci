@@ -1,3 +1,36 @@
+deploy:
+  stage: deploy
+
+  script:
+    - echo "Deploying to $ENV"
+
+  rules:
+    # MASTER → automático + ENV=prod
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: on_success
+      variables:
+        ENV: "prod"
+
+    # SECURITY → automático + ENV=staging
+    - if: '$CI_COMMIT_BRANCH == "security"'
+      when: on_success
+      variables:
+        ENV: "staging"
+
+    # DEVELOP → automático + ENV=int (o el que quieras)
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: on_success
+      variables:
+        ENV: "int"
+
+    # Cualquier otro caso → manual
+    - when: manual
+      variables:
+        ENV: "int"
+
+
+
+
 deployment:
   stage: deployment
 
