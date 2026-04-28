@@ -1,3 +1,14 @@
+spin='-\|/'
+i=0
+for s in {7..1}; do
+  i=$(( (i+1) %4 ))
+  printf "\r⏳ Starting [3/3] in %ds... %c" "$s" "${spin:$i:1}"
+  sleep 1
+done
+printf "\r✅ Starting [3/3] now!      \n"
+
+
+
 for i in {7..1}; do echo "⏳ $i"; sleep 1; done
 
 
