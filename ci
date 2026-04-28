@@ -1,3 +1,163 @@
+deploy:
+  stage: deploy
+
+  variables:
+    ENV: "int"
+
+  script:
+    # ================================
+    # 🚀 0. INIT
+    # ================================
+    - |
+      echo -e "\033[1;35m"
+      echo "╔══════════════════════════════════════════════╗"
+      echo "║        🚀 STARTING DEPLOY PIPELINE           ║"
+      echo "╚══════════════════════════════════════════════╝"
+      echo -e "\033[0m"
+
+    - VERSION="${CI_COMMIT_REF_SLUG}-${CI_PIPELINE_ID}"
+    - echo "📌 Version: $VERSION"
+
+    # ================================
+    # 📦 1. CREATE ARTIFACT
+    # ================================
+    - |
+      echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📦 [1/3] CREATING ARTIFACT"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+
+    - TAR_FILE="${APP_NAME}-${VERSION}.tar.gz"
+    - echo "📁 File: $TAR_FILE"
+
+    - tar --warning=no-file-changed \
+        --exclude='.git' \
+        --exclude='.idea' \
+        --exclude="$TAR_FILE" \
+        -zcvf "$TAR_FILE" . || true
+
+    # ================================
+    # ☁️ 2. PUBLISH TO ARTIFACTORY
+    # ================================
+    - |
+      echo -e "\033[1;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "☁️  [2/3] PUBLISHING TO ARTIFACTORY"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+
+    - set +x  # 🔒 ocultar credenciales
+
+    - BASE_URL="https://api.artifactory-dogen.group.echonet/artifactory/${ARTIFACTORY_REPOSITORY_PATH}-${REPOSITORY_KEY}/${TAR_FILE}"
+    - echo "🔗 Target: $BASE_URL"
+
+    - STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+        -u "${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD}" \
+        -X PUT "$BASE_URL" -T "$TAR_FILE" -k)
+
+    - set -x  # 👁 volver a mostrar comandos
+
+    - echo "📡 HTTP Status: $STATUS"
+
+    - |
+      if [ "$STATUS" != "201" ]; then
+        echo -e "\033[1;31m❌ Upload failed ($STATUS)\033[0m"
+        exit 1
+      else
+        echo -e "\033[1;32m✅ Artifact uploaded successfully\033[0m"
+      fi
+
+    # ================================
+    # 🌐 3. DEPLOY TO E-WEBHOSTING
+    # ================================
+    - |
+      echo -e "\033[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "🌐 [3/3] DEPLOY TO E-WEBHOSTING"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+
+    - URL="https://lamp-dmz.group.echonet/api/v3/deploy-premium/${E_WEBHOSTING_APP_NAME}/${ENV}/${VERSION}/${HASH}"
+
+    - set +x  # 🔒 ocultar payload sensible
+
+    - CURL_CMD="curl -k -d \"path=${ARTIFACTORY_REPOSITORY_PATH}-${REPOSITORY_KEY}/${TAR_FILE}\" -X POST \"$URL\""
+
+    - JSON_RESPONSE=$(eval "$CURL_CMD")
+
+    - set -x
+
+    - echo "📦 Response: $JSON_RESPONSE"
+
+    - STATUS=$(echo "$JSON_RESPONSE" | jq -r '.status')
+    - CODE=$(echo "$JSON_RESPONSE" | jq -r '.code')
+
+    - |
+      if [ "$CODE" != "200" ] || [ "$STATUS" != "success" ]; then
+        echo -e "\033[1;31m❌ Deployment failed\033[0m"
+        exit 1
+      else
+        echo -e "\033[1;32m✅ Deployment successful\033[0m"
+      fi
+
+    # ================================
+    # 🎉 DONE
+    # ================================
+    - |
+      echo -e "\033[1;35m"
+      echo "╔══════════════════════════════════════════════╗"
+      echo "║           🎉 DEPLOY COMPLETED                ║"
+      echo "╚══════════════════════════════════════════════╝"
+      echo -e "\033[0m"
+
+  needs:
+    - job: install_dependencies
+      optional: true
+
+
+    # ================================
+    # 🌐 3. DEPLOY TO E-WEBHOSTING
+    # ================================
+    - |
+      echo -e "\033[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "🌐 [3/3] DEPLOY TO E-WEBHOSTING"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+
+    - URL="https://lamp-dmz.group.echonet/api/v3/deploy-premium/${E_WEBHOSTING_APP_NAME}/${ENV}/${VERSION}/${HASH}"
+
+    # 🔧 CURL completamente explícito (TODO visible)
+    - CURL_CMD="curl -k -X POST \"$URL\" \
+        -H \"Content-Type: application/x-www-form-urlencoded\" \
+        -d \"path=${ARTIFACTORY_REPOSITORY_PATH}-${REPOSITORY_KEY}/${TAR_FILE}\""
+
+    # 👇 BLOQUE PRO TIPO TERMINAL (copy/paste ready)
+    - |
+      echo -e "\033[1;35m"
+      echo "╔══════════════════════════════════════════════╗"
+      echo "║           📋 CURL (COPY & PASTE)             ║"
+      echo "╚══════════════════════════════════════════════╝"
+      echo -e "\033[0m"
+
+      echo -e "\033[1;30m──────────────────────────────────────────────\033[0m"
+      echo -e "\033[1;32m$ $CURL_CMD\033[0m"
+      echo -e "\033[1;30m──────────────────────────────────────────────\033[0m"
+
+    # 🚀 ejecución (sin ocultar nada)
+    - JSON_RESPONSE=$(eval "$CURL_CMD")
+
+    - |
+      echo -e "\033[1;36m📦 RESPONSE:\033[0m"
+      echo "$JSON_RESPONSE"
+
+    - STATUS=$(echo "$JSON_RESPONSE" | jq -r '.status')
+    - CODE=$(echo "$JSON_RESPONSE" | jq -r '.code')
+
+    - |
+      if [ "$CODE" != "200" ] || [ "$STATUS" != "success" ]; then
+        echo -e "\033[1;31m❌ Deployment failed\033[0m"
+        exit 1
+      else
+        echo -e "\033[1;32m✅ Deployment successful\033[0m"
+      fi
+
+
+
+
 
 rules:
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
