@@ -1,3 +1,5 @@
+for i in {7..1}; do echo "⏳ $i"; sleep 1; done
+
 
 echo "📁 Root content:"
 find . -maxdepth 1 -mindepth 1 | sed 's|^\./||'
