@@ -1,3 +1,12 @@
+
+echo "📁 Root content:"
+find . -maxdepth 1 -mindepth 1 | sed 's|^\./||'
+
+tar -zcf "$TAR_FILE" . --exclude='.git' --exclude='.idea'
+
+echo "📦 Artifact ready: $TAR_FILE"
+
+
 deploy:
   stage: deploy
 
