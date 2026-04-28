@@ -1,3 +1,20 @@
+set +x  # evitar ruido antes
+
+echo ""
+echo "████████████████████████████████████████"
+echo "🚀 DEPLOY TO E-WEBHOSTING"
+echo "████████████████████████████████████████"
+
+# versión bonita
+echo -e "\033[1;36m$CURL_CMD\033[0m"
+
+echo "----------------------------------------"
+echo "📋 COPY:"
+echo "$CURL_CMD"
+echo "████████████████████████████████████████"
+echo ""
+
+
 deploy:
   stage: deploy
 
