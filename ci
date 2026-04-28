@@ -1,3 +1,11 @@
+
+rules:
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    when: manual
+
+  - when: on_success
+
+
 set +x  # evitar ruido antes
 
 echo ""
